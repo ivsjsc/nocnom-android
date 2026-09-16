@@ -118,6 +118,7 @@ private fun AuthenticatedNocnomApp(
                     onUpdateTarget = viewModel::updateDailyTarget,
                     onRefresh = viewModel::refresh,
                     onSignOut = viewModel::signOut,
+                    onDeleteAccount = viewModel::deleteAccount,
                 )
             }
         }
