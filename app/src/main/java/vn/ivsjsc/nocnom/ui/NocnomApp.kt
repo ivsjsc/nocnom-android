@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import vn.ivsjsc.nocnom.ui.screens.AuthScreen
 import vn.ivsjsc.nocnom.ui.screens.HealthScreen
 import vn.ivsjsc.nocnom.ui.screens.HomeScreen
 import vn.ivsjsc.nocnom.ui.screens.HistoryScreen
@@ -33,6 +34,31 @@ private data class Destination(
 
 @Composable
 fun NocnomApp(viewModel: NocnomViewModel = hiltViewModel()) {
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
+
+    if (authState.user == null) {
+        AuthScreen(
+            state = authState,
+            onSignInEmail = viewModel::signInWithEmail,
+            onCreateAccount = viewModel::createAccount,
+            onGoogleToken = viewModel::signInWithGoogleToken,
+            onResetPassword = viewModel::sendPasswordReset,
+            onClearMessage = viewModel::clearAuthMessage,
+        )
+        return
+    }
+
+    AuthenticatedNocnomApp(
+        viewModel = viewModel,
+        accountEmail = authState.user?.email,
+    )
+}
+
+@Composable
+private fun AuthenticatedNocnomApp(
+    viewModel: NocnomViewModel,
+    accountEmail: String?,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navController = rememberNavController()
     val destinations = listOf(
@@ -66,18 +92,32 @@ fun NocnomApp(viewModel: NocnomViewModel = hiltViewModel()) {
             }
         },
     ) { padding ->
-        NavHost(navController, startDestination = "home", modifier = Modifier.fillMaxSize()) {
-            composable("home") { HomeScreen(state, padding, onOpenHistory = { navController.navigate("history") }) }
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            composable("home") {
+                HomeScreen(
+                    state,
+                    padding,
+                    onOpenHistory = { navController.navigate("history") },
+                )
+            }
             composable("plan") { PlanScreen(state, padding) }
             composable("library") { LibraryScreen(state, padding) }
             composable("health") { HealthScreen(state, padding) }
-            composable("history") { HistoryScreen(state, padding, onBack = { navController.popBackStack() }) }
+            composable("history") {
+                HistoryScreen(state, padding, onBack = { navController.popBackStack() })
+            }
             composable("profile") {
                 ProfileScreen(
                     state = state,
                     contentPadding = padding,
+                    accountEmail = accountEmail,
                     onUpdateTarget = viewModel::updateDailyTarget,
                     onRefresh = viewModel::refresh,
+                    onSignOut = viewModel::signOut,
                 )
             }
         }
