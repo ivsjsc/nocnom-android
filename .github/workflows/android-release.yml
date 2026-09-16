@@ -3,6 +3,8 @@ name: Android Release AAB
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
