@@ -16,12 +16,44 @@ fun ProfileScreen(
     onUpdateTarget: (Int) -> Unit,
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
 ) {
     var target by remember(state.profile.dailyCalorieTarget) {
         mutableStateOf(state.profile.dailyCalorieTarget.toString())
     }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val parsed = target.toIntOrNull()
     val valid = parsed != null && parsed in 800..6000
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa tài khoản nOcnOm?") },
+            text = {
+                Text(
+                    "Tài khoản Firebase và dữ liệu nOcnOm của bạn sẽ bị xóa khỏi Firestore. " +
+                        "Hành động này không thể hoàn tác. Nếu phiên đăng nhập đã quá cũ, hệ thống có thể yêu cầu đăng nhập lại trước khi xóa.",
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                ) {
+                    Text("Xóa vĩnh viễn")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Hủy") }
+            },
+        )
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -84,6 +116,15 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Đăng xuất")
+            }
+        }
+        item {
+            TextButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text("Xóa tài khoản và dữ liệu")
             }
         }
     }
