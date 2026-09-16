@@ -1,7 +1,5 @@
 package vn.ivsjsc.nocnom.domain.model
 
-import java.time.LocalDate
-
 data class VendorExtraInfo(
     val id: String,
     val label: String,
@@ -46,22 +44,25 @@ data class LogEntry(
 )
 
 data class MealSlot(
-    val key: MealKey,
-    val dishId: String? = null,
+    val dishId: String = "",
+    val stock: Int = 0,
     val skipped: Boolean = false,
 )
 
-data class TimetableDay(
-    val date: LocalDate,
-    val meals: List<MealSlot> = listOf(
-        MealSlot(MealKey.A),
-        MealSlot(MealKey.B),
-        MealSlot(MealKey.C),
+data class DayMenu(
+    val dayName: String = "",
+    val options: Map<MealKey, MealSlot> = mapOf(
+        MealKey.A to MealSlot(),
+        MealKey.B to MealSlot(),
+        MealKey.C to MealSlot(),
     ),
+    val suggestionDate: String? = null,
+    val suggestionVersion: Int? = null,
 )
 
 data class UserProfile(
     val fullName: String = "",
+    val dateOfBirth: String = "",
     val school: String = "",
     val faculty: String = "",
     val studentId: String = "",
@@ -77,13 +78,18 @@ data class UserProfile(
     val macroProteinPct: Int? = null,
     val macroCarbsPct: Int? = null,
     val macroFatPct: Int? = null,
+    val macroProteinG: Double? = null,
+    val macroCarbsG: Double? = null,
+    val macroFatG: Double? = null,
+    val recommendationMode: String = "balanced",
+    val mealBudgetVnd: Long? = null,
 )
 
 data class UserState(
     val categories: List<Category> = emptyList(),
     val dishes: List<Dish> = emptyList(),
     val logs: List<LogEntry> = emptyList(),
-    val timetable: List<TimetableDay> = emptyList(),
+    val timetable: Map<String, DayMenu> = emptyMap(),
     val profile: UserProfile = UserProfile(),
     val source: DataSource = DataSource.DEMO,
 )
