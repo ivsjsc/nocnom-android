@@ -29,6 +29,8 @@ The app falls back to demo state until the Android Firebase app is registered an
 
 See `docs/FIREBASE_SETUP.md`.
 
+GitHub Actions restores `app/google-services.json` from the `GOOGLE_SERVICES_JSON_BASE64` repository secret and validates both Firebase project `cocoa-35632` and package `vn.ivsjsc.nocnom` before building.
+
 ## Build
 
 CI installs Gradle 9.5.1 directly.
