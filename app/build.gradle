@@ -5,6 +5,8 @@ plugins {
     id 'com.google.dagger.hilt.android'
 }
 
+// Keep local/debug builds working before the Android app is registered in Firebase.
+// As soon as app/google-services.json exists, the Google Services plugin is applied.
 if (file('google-services.json').exists()) {
     apply plugin: 'com.google.gms.google-services'
 }
@@ -26,7 +28,8 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix '.debug'
+            // Deliberately keep the same applicationId as release so the single
+            // Firebase Android registration vn.ivsjsc.nocnom works in both builds.
             versionNameSuffix '-debug'
         }
         release {
