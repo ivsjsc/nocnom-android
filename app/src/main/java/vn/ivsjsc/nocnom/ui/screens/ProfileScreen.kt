@@ -12,10 +12,14 @@ import vn.ivsjsc.nocnom.domain.model.UserState
 fun ProfileScreen(
     state: UserState,
     contentPadding: PaddingValues,
+    accountEmail: String?,
     onUpdateTarget: (Int) -> Unit,
     onRefresh: () -> Unit,
+    onSignOut: () -> Unit,
 ) {
-    var target by remember(state.profile.dailyCalorieTarget) { mutableStateOf(state.profile.dailyCalorieTarget.toString()) }
+    var target by remember(state.profile.dailyCalorieTarget) {
+        mutableStateOf(state.profile.dailyCalorieTarget.toString())
+    }
     val parsed = target.toIntOrNull()
     val valid = parsed != null && parsed in 800..6000
 
@@ -32,10 +36,23 @@ fun ProfileScreen(
         item { Text("Quản lý tài khoản", style = MaterialTheme.typography.headlineSmall) }
         item {
             Card {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text(state.profile.fullName.ifBlank { "Người dùng nOcnOm" }, style = MaterialTheme.typography.titleMedium)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Text(
-                        if (state.source.name == "FIRESTORE") "Dữ liệu: Firebase / Firestore" else "Dữ liệu: demo cục bộ",
+                        state.profile.fullName.ifBlank { "Người dùng nOcnOm" },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    if (!accountEmail.isNullOrBlank()) {
+                        Text(accountEmail, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(
+                        if (state.source.name == "FIRESTORE") {
+                            "Dữ liệu: Firebase / Firestore"
+                        } else {
+                            "Đang chờ dữ liệu Firestore của tài khoản"
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -53,8 +70,20 @@ fun ProfileScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { if (valid) onUpdateTarget(parsed!!) }, enabled = valid) { Text("Lưu") }
+                Button(
+                    onClick = { parsed?.takeIf { it in 800..6000 }?.let(onUpdateTarget) },
+                    enabled = valid,
+                ) { Text("Lưu") }
                 OutlinedButton(onClick = onRefresh) { Text("Đồng bộ lại") }
+            }
+        }
+        item { HorizontalDivider() }
+        item {
+            OutlinedButton(
+                onClick = onSignOut,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Đăng xuất")
             }
         }
     }
