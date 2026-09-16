@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import vn.ivsjsc.nocnom.data.UserStateRepository
 import vn.ivsjsc.nocnom.data.auth.AuthRepository
 import vn.ivsjsc.nocnom.data.auth.AuthState
+import vn.ivsjsc.nocnom.domain.model.MealKey
+import vn.ivsjsc.nocnom.domain.model.UserProfile
 import vn.ivsjsc.nocnom.domain.model.UserState
 
 @HiltViewModel
@@ -47,6 +49,28 @@ class NocnomViewModel @Inject constructor(
 
     fun updateDailyTarget(target: Int) {
         viewModelScope.launch { runCatching { repository.updateDailyCalorieTarget(target) } }
+    }
+
+    fun updateMealSlot(mealKey: MealKey, dishId: String?, skipped: Boolean) {
+        viewModelScope.launch {
+            runCatching { repository.updateMealSlot(mealKey, dishId, skipped) }
+        }
+    }
+
+    fun markMealEaten(mealKey: MealKey) {
+        viewModelScope.launch { runCatching { repository.markMealEaten(mealKey) } }
+    }
+
+    fun updateRecommendationPreferences(mode: String, mealBudgetVnd: Long?) {
+        viewModelScope.launch {
+            runCatching {
+                repository.updateRecommendationPreferences(mode, mealBudgetVnd)
+            }
+        }
+    }
+
+    fun updateProfile(profile: UserProfile) {
+        viewModelScope.launch { runCatching { repository.updateProfile(profile) } }
     }
 
     fun signInWithEmail(email: String, password: String) {

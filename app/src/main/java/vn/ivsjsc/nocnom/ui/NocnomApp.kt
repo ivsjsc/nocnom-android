@@ -80,7 +80,9 @@ private fun AuthenticatedNocnomApp(
                         selected = currentRoute == destination.route,
                         onClick = {
                             navController.navigate(destination.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -104,18 +106,30 @@ private fun AuthenticatedNocnomApp(
                     onOpenHistory = { navController.navigate("history") },
                 )
             }
-            composable("plan") { PlanScreen(state, padding) }
+            composable("plan") {
+                PlanScreen(
+                    state = state,
+                    contentPadding = padding,
+                    onUpdateMeal = viewModel::updateMealSlot,
+                    onMarkMealEaten = viewModel::markMealEaten,
+                )
+            }
             composable("library") { LibraryScreen(state, padding) }
             composable("health") { HealthScreen(state, padding) }
             composable("history") {
-                HistoryScreen(state, padding, onBack = { navController.popBackStack() })
+                HistoryScreen(
+                    state,
+                    padding,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable("profile") {
                 ProfileScreen(
                     state = state,
                     contentPadding = padding,
                     accountEmail = accountEmail,
-                    onUpdateTarget = viewModel::updateDailyTarget,
+                    onSaveProfile = viewModel::updateProfile,
+                    onUpdateRecommendation = viewModel::updateRecommendationPreferences,
                     onRefresh = viewModel::refresh,
                     onSignOut = viewModel::signOut,
                     onDeleteAccount = viewModel::deleteAccount,

@@ -1,23 +1,50 @@
 # Implementation status
 
-## Phase 1 — Native Android foundation
+## Native Android parity baseline
 
 Status: implemented on `main`.
 
-- Kotlin + Jetpack Compose + Material 3
-- Hilt dependency injection
-- nOcnOm Firestore schema v2 contract
-- Home kcal + macro dashboard
-- Meal plan including skip-lunch UX
-- Dish library/search
-- Health/BMI screen
-- Eating history
+### Authentication
+- Email/password sign-in and account creation
+- Google Sign-In -> Firebase Authentication
+- Password reset
+- Sign out
+- Account + Firestore data deletion
+
+### Shared Firestore data
+- Schema v2 profile/timetable/dishes/categories/logs contract
+- Realtime listeners for all user-facing shared domains
+- Web `timetable.value` compatibility
+- Web `dishes/categories/logs.items` compatibility
+- Vendor and nutrition field parsing
+- Android writes use the same documents as Web
+
+### Daily meal workflow
+- Three meals backed by actual timetable data
+- Persisted skip-meal / “Không ăn buổi trưa”
+- Change-dish search
+- Daily Vietnam-date suggestion refresh
+- Preserve skipped meals and meals already eaten
+- Mark selected meal as eaten
+- Eating log write preserves unknown fields from existing Web records
+
+### Recommendation parity
+- Shared profile fields `recommendationMode` and `mealBudgetVnd`
+- Balanced / Budget / Variety / Quick modes
+- Context-aware dish ranking using calories, preference/history, budget, convenience and variety signals
+- Recommendation settings live under Account, not Dashboard
+
+### Nutrition and health
+- Dashboard calories and macros filter to the current Vietnam calendar date
 - Profile daily kcal target
-- Nutrition 4/4/9 consistency logic and unit tests
-- Android CI producing a debug APK artifact
+- BMI/health summary
+- Macro 4/4/9 consistency rule; missing macros are not inferred from kcal
 
-## Pending Firebase activation
+### Release
+- Android CI
+- Signed AAB release workflow
+- Play Console documentation and public policy URLs
 
-The app intentionally runs with demo fallback until Firebase Android app `vn.ivsjsc.nocnom` is registered in project `cocoa-35632` and `app/google-services.json` is provided locally/through CI configuration.
+## Next parity work
 
-Next phase: Firebase Auth, realtime Firestore sync, Room cache, WorkManager retry/sync, then Health Connect and notifications.
+The shared architecture is now in place. Future Web features should first extend the shared Firestore/domain contract and then add platform-specific UI. Rich Web-only dish authoring flows (nutrition lookup/image discovery/advanced vendor editing) should be ported as separate Android UX rather than duplicating browser-specific implementation.
