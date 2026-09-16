@@ -26,9 +26,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${GOOGLE_SERVICES_JSON_BASE64:-}" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" \
-              | tr -d '\r\n\t ' \
-              | base64 --decode > app/google-services.json
+            if printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | jq -e . >/dev/null 2>&1; then
+              printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" > app/google-services.json
+            else
+              printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" \
+                | tr -d '\r\n\t ' \
+                | base64 --decode > app/google-services.json
+            fi
             jq empty app/google-services.json
             test "$(jq -r '.project_info.project_id' app/google-services.json)" = "cocoa-35632"
             test "$(jq -r '.client[0].client_info.android_client_info.package_name' app/google-services.json)" = "vn.ivsjsc.nocnom"
