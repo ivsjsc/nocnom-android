@@ -65,6 +65,10 @@ class NocnomViewModel @Inject constructor(
         viewModelScope.launch { authRepository.sendPasswordReset(email) }
     }
 
+    fun deleteAccount() {
+        viewModelScope.launch { authRepository.deleteAccount() }
+    }
+
     fun signOut() = authRepository.signOut()
 
     fun clearAuthMessage() = authRepository.clearMessage()
