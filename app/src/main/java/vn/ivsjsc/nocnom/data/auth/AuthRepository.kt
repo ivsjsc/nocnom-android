@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.tasks.await
+import vn.ivsjsc.nocnom.data.FirestoreContract
 
 /** Minimal auth model kept separate from Firebase SDK types so UI stays testable. */
 data class AuthUser(
@@ -34,6 +36,7 @@ interface AuthRepository {
     suspend fun createAccount(email: String, password: String)
     suspend fun signInWithGoogleIdToken(idToken: String)
     suspend fun sendPasswordReset(email: String)
+    suspend fun deleteAccount()
     fun signOut()
     fun clearMessage()
 }
@@ -119,6 +122,39 @@ class FirebaseAuthRepository @Inject constructor(
             }
     }
 
+    override suspend fun deleteAccount() {
+        val instance = auth ?: return unavailable()
+        val user = instance.currentUser ?: run {
+            mutableState.update { it.copy(errorMessage = "Không tìm thấy phiên đăng nhập để xóa tài khoản.") }
+            return
+        }
+
+        mutableState.update { it.copy(isLoading = true, errorMessage = null, infoMessage = null) }
+        runCatching {
+            val uid = user.uid
+            val db = FirebaseFirestore.getInstance()
+            val paths = listOf(
+                FirestoreContract.profile(uid),
+                FirestoreContract.timetable(uid),
+                FirestoreContract.dishes(uid),
+                FirestoreContract.categories(uid),
+                FirestoreContract.logs(uid),
+                FirestoreContract.meta(uid),
+                FirestoreContract.legacyAppState(uid),
+            )
+            val batch = db.batch()
+            paths.forEach { path -> batch.delete(db.document(path)) }
+            batch.commit().await()
+            user.delete().await()
+        }.onSuccess {
+            mutableState.value = AuthState(firebaseAvailable = true, user = null)
+        }.onFailure { throwable ->
+            mutableState.update {
+                it.copy(isLoading = false, errorMessage = userMessage(throwable))
+            }
+        }
+    }
+
     override fun signOut() {
         auth?.signOut()
         mutableState.update { it.copy(user = null, errorMessage = null, infoMessage = null) }
@@ -168,6 +204,8 @@ class FirebaseAuthRepository @Inject constructor(
     private fun userMessage(throwable: Throwable): String {
         val raw = throwable.localizedMessage.orEmpty()
         return when {
+            raw.contains("recent", ignoreCase = true) || raw.contains("CREDENTIAL_TOO_OLD", ignoreCase = true) ->
+                "Phiên đăng nhập đã quá cũ. Hãy đăng xuất, đăng nhập lại rồi thực hiện xóa tài khoản ngay."
             raw.contains("password", ignoreCase = true) && raw.contains("invalid", ignoreCase = true) ->
                 "Email hoặc mật khẩu không đúng."
             raw.contains("email", ignoreCase = true) && raw.contains("already", ignoreCase = true) ->
