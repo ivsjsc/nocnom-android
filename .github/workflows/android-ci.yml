@@ -45,6 +45,13 @@ jobs:
             echo 'GOOGLE_SERVICES_JSON_BASE64 is not configured; building without Firebase config.'
           fi
 
+      - name: Validate launcher branding
+        run: |
+          set -euo pipefail
+          grep -q 'android:icon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
+          test -s app/src/main/res/drawable/ic_nocnom_launcher.xml
+
       - name: Unit tests
         run: gradle :app:testDebugUnitTest
 
