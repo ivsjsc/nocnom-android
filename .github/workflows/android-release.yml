@@ -3,11 +3,22 @@ name: Android Release AAB
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+    paths:
+      - 'app/build.gradle'
+      - 'app/src/main/AndroidManifest.xml'
+      - 'app/src/main/res/drawable/ic_nocnom_launcher.xml'
+      - '.github/workflows/android-release.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -23,6 +34,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.5.1'
+
+      - name: Validate release identity and branding
+        run: |
+          set -euo pipefail
+          grep -q "applicationId 'vn.ivsjsc.nocnom'" app/build.gradle
+          grep -q 'android:label="nOcnOm"' app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
+          test -s app/src/main/res/drawable/ic_nocnom_launcher.xml
+          grep -q '#DA6A57' app/src/main/res/drawable/ic_nocnom_launcher.xml
+          VERSION_CODE="$(sed -n "s/.*versionCode \([0-9][0-9]*\).*/\1/p" app/build.gradle | head -n1)"
+          VERSION_NAME="$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle | head -n1)"
+          test -n "$VERSION_CODE"
+          test -n "$VERSION_NAME"
+          echo "Validated nOcnOm release: versionName=$VERSION_NAME versionCode=$VERSION_CODE"
 
       - name: Validate release secrets
         env:
@@ -63,13 +89,6 @@ jobs:
           test "$(jq -r '.project_info.project_id' app/google-services.json)" = "cocoa-35632"
           test "$(jq -r '.client[0].client_info.android_client_info.package_name' app/google-services.json)" = "vn.ivsjsc.nocnom"
 
-      - name: Validate launcher branding
-        run: |
-          set -euo pipefail
-          grep -q 'android:icon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          test -s app/src/main/res/drawable/ic_nocnom_launcher.xml
-
       - name: Unit tests
         run: gradle :app:testDebugUnitTest
 
@@ -81,12 +100,19 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: gradle :app:bundleRelease
 
-      - name: Verify bundle signature
-        run: jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+      - name: Verify bundle signature and checksum
+        run: |
+          set -euo pipefail
+          jarsigner -verify -verbose -certs app/build/outputs/bundle/release/app-release.aab
+          sha256sum app/build/outputs/bundle/release/app-release.aab \
+            | tee app/build/outputs/bundle/release/app-release.aab.sha256
 
       - name: Upload Play Store AAB
         uses: actions/upload-artifact@v4
         with:
           name: nocnom-play-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: |
+            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/bundle/release/app-release.aab.sha256
           if-no-files-found: error
+          retention-days: 30
