@@ -10,7 +10,8 @@ on:
     paths:
       - 'app/build.gradle'
       - 'app/src/main/AndroidManifest.xml'
-      - 'app/src/main/res/drawable/ic_nocnom_launcher.xml'
+      - 'app/src/main/res/mipmap*/**'
+      - 'app/src/main/res/values*/**'
       - '.github/workflows/android-release.yml'
 
 permissions:
@@ -39,16 +40,21 @@ jobs:
         run: |
           set -euo pipefail
           grep -q "applicationId 'vn.ivsjsc.nocnom'" app/build.gradle
-          grep -q 'android:label="nOcnOm"' app/src/main/AndroidManifest.xml
-          grep -q 'android:icon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          test -s app/src/main/res/drawable/ic_nocnom_launcher.xml
-          grep -q '#DA6A57' app/src/main/res/drawable/ic_nocnom_launcher.xml
+          grep -q 'android:label="@string/app_name"' app/src/main/AndroidManifest.xml
+          grep -q 'android:icon="@mipmap/ic_launcher"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' app/src/main/AndroidManifest.xml
+          test -s app/src/main/res/values/strings.xml
+          grep -q 'Nocnom' app/src/main/res/values/strings.xml
+          test -s app/src/main/res/mipmap-mdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           VERSION_CODE="$(sed -n "s/.*versionCode \([0-9][0-9]*\).*/\1/p" app/build.gradle | head -n1)"
           VERSION_NAME="$(sed -n "s/.*versionName '\([^']*\)'.*/\1/p" app/build.gradle | head -n1)"
           test -n "$VERSION_CODE"
           test -n "$VERSION_NAME"
-          echo "Validated nOcnOm release: versionName=$VERSION_NAME versionCode=$VERSION_CODE"
+          echo "Validated Nocnom release: versionName=$VERSION_NAME versionCode=$VERSION_CODE"
 
       - name: Validate release secrets
         env:

@@ -48,9 +48,16 @@ jobs:
       - name: Validate launcher branding
         run: |
           set -euo pipefail
-          grep -q 'android:icon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          grep -q 'android:roundIcon="@drawable/ic_nocnom_launcher"' app/src/main/AndroidManifest.xml
-          test -s app/src/main/res/drawable/ic_nocnom_launcher.xml
+          grep -q 'android:icon="@mipmap/ic_launcher"' app/src/main/AndroidManifest.xml
+          grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' app/src/main/AndroidManifest.xml
+          grep -q 'android:label="@string/app_name"' app/src/main/AndroidManifest.xml
+          test -s app/src/main/res/values/strings.xml
+          grep -q 'Nocnom' app/src/main/res/values/strings.xml
+          test -s app/src/main/res/mipmap-mdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          test -s app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
       - name: Unit tests
         run: gradle :app:testDebugUnitTest
