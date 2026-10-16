@@ -2,9 +2,13 @@ package vn.ivsjsc.nocnom.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import vn.ivsjsc.nocnom.domain.model.UserProfile
 import vn.ivsjsc.nocnom.domain.model.UserState
@@ -19,7 +23,9 @@ fun ProfileScreen(
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
+
     val profile = state.profile
     var fullName by remember(profile.fullName) { mutableStateOf(profile.fullName) }
     var dateOfBirth by remember(profile.dateOfBirth) { mutableStateOf(profile.dateOfBirth) }
@@ -97,8 +103,22 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Text("Quản lý tài khoản", style = MaterialTheme.typography.headlineSmall)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (onBack != null) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Quay lại",
+                        )
+                    }
+                }
+                Text("Quản lý tài khoản", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+            }
         }
+
 
         item {
             Card {

@@ -22,7 +22,8 @@ fun HistoryScreen(
 ) {
     val zone = ZoneId.of("Asia/Ho_Chi_Minh")
     val dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-    val money = NumberFormat.getNumberInstance(Locale("vi", "VN"))
+    val money = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"))
+
     val grouped = state.logs.groupBy { log ->
         if (log.timestamp <= 0L) "Chưa xác định ngày"
         else Instant.ofEpochMilli(log.timestamp).atZone(zone).toLocalDate().format(dateFormat)

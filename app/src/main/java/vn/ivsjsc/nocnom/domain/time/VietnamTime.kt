@@ -22,4 +22,21 @@ object VietnamTime {
 
     fun hour(timestamp: Long = System.currentTimeMillis()): Int =
         Instant.ofEpochMilli(timestamp).atZone(zone).hour
+
+    fun formatTime(timestamp: Long = System.currentTimeMillis()): String {
+        val zdt = Instant.ofEpochMilli(timestamp).atZone(zone)
+        return "%02d:%02d".format(zdt.hour, zdt.minute)
+    }
+
+    fun vietnameseDayFull(dayKey: String): String = when (dayKey) {
+        "mon" -> "Thứ Hai"
+        "tue" -> "Thứ Ba"
+        "wed" -> "Thứ Tư"
+        "thu" -> "Thứ Năm"
+        "fri" -> "Thứ Sáu"
+        "sat" -> "Thứ Bảy"
+        "sun" -> "Chủ Nhật"
+        else -> ""
+    }
+
 }

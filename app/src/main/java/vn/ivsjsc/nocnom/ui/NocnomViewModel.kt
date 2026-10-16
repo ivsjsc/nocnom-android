@@ -57,9 +57,32 @@ class NocnomViewModel @Inject constructor(
         }
     }
 
+    fun updateMealSlotForDay(dayKey: String, mealKey: MealKey, dishId: String?, skipped: Boolean) {
+        viewModelScope.launch {
+            runCatching { repository.updateMealSlotForDay(dayKey, mealKey, dishId, skipped) }
+        }
+    }
+
     fun markMealEaten(mealKey: MealKey) {
         viewModelScope.launch { runCatching { repository.markMealEaten(mealKey) } }
     }
+
+    fun unmarkMealEaten(mealKey: MealKey) {
+        viewModelScope.launch { runCatching { repository.unmarkMealEaten(mealKey) } }
+    }
+
+    fun addDish(dish: vn.ivsjsc.nocnom.domain.model.Dish) {
+        viewModelScope.launch { runCatching { repository.addDish(dish) } }
+    }
+
+    fun updateDish(dish: vn.ivsjsc.nocnom.domain.model.Dish) {
+        viewModelScope.launch { runCatching { repository.updateDish(dish) } }
+    }
+
+    fun toggleFavoriteDish(dishId: String) {
+        viewModelScope.launch { runCatching { repository.toggleFavoriteDish(dishId) } }
+    }
+
 
     fun updateRecommendationPreferences(mode: String, mealBudgetVnd: Long?) {
         viewModelScope.launch {

@@ -89,8 +89,16 @@ class HybridUserStateRepository @Inject constructor(
         dishId: String?,
         skipped: Boolean,
     ) {
+        updateMealSlotForDay(VietnamTime.dayKey(), mealKey, dishId, skipped)
+    }
+
+    override suspend fun updateMealSlotForDay(
+        dayKey: String,
+        mealKey: MealKey,
+        dishId: String?,
+        skipped: Boolean,
+    ) {
         val uid = currentUid() ?: return
-        val dayKey = VietnamTime.dayKey()
         val dateKey = VietnamTime.dateKey()
         val current = mutableState.value
         val menu = current.timetable[dayKey] ?: DayMenu(dayName = vietnameseDayName(dayKey))
@@ -140,6 +148,44 @@ class HybridUserStateRepository @Inject constructor(
         mutableState.value = current.copy(logs = retained + entry)
         persistLogWithoutLosingUnknownFields(uid, entry, dateKey, mealKey)
     }
+
+    override suspend fun unmarkMealEaten(mealKey: MealKey) {
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val dateKey = VietnamTime.dateKey()
+        val retained = current.logs.filterNot { log ->
+            log.mealKey == mealKey && VietnamTime.dateKey(log.timestamp) == dateKey
+        }
+        mutableState.value = current.copy(logs = retained)
+        persistLogsDirectly(uid, retained)
+    }
+
+    override suspend fun addDish(dish: Dish) {
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val updatedDishes = current.dishes.filterNot { it.id == dish.id } + dish
+        mutableState.value = current.copy(dishes = updatedDishes)
+        persistDishes(uid, updatedDishes)
+    }
+
+    override suspend fun updateDish(dish: Dish) {
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val updatedDishes = current.dishes.map { if (it.id == dish.id) dish else it }
+        mutableState.value = current.copy(dishes = updatedDishes)
+        persistDishes(uid, updatedDishes)
+    }
+
+    override suspend fun toggleFavoriteDish(dishId: String) {
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val updatedDishes = current.dishes.map {
+            if (it.id == dishId) it.copy(isFavorite = !it.isFavorite) else it
+        }
+        mutableState.value = current.copy(dishes = updatedDishes)
+        persistDishes(uid, updatedDishes)
+    }
+
 
     override suspend fun updateRecommendationPreferences(
         mode: String,
@@ -230,6 +276,41 @@ class HybridUserStateRepository @Inject constructor(
             )
             .await()
     }
+
+    private suspend fun persistDishes(
+        uid: String,
+        dishes: List<Dish>,
+    ) {
+        FirebaseFirestore.getInstance()
+            .document(FirestoreContract.dishes(uid))
+            .set(
+                mapOf(
+                    "items" to serializeDishes(dishes),
+                    "schemaVersion" to FirestoreContract.USER_STATE_SCHEMA_VERSION,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
+    private suspend fun persistLogsDirectly(
+        uid: String,
+        logs: List<LogEntry>,
+    ) {
+        FirebaseFirestore.getInstance()
+            .document(FirestoreContract.logs(uid))
+            .set(
+                mapOf(
+                    "items" to logs.map { serializeLog(it) },
+                    "schemaVersion" to FirestoreContract.USER_STATE_SCHEMA_VERSION,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+            .await()
+    }
+
 
     private suspend fun persistLogWithoutLosingUnknownFields(
         uid: String,
@@ -484,6 +565,43 @@ class HybridUserStateRepository @Inject constructor(
                 "suggestionVersion" to menu.suggestionVersion,
             )
         }
+
+    private fun serializeDishes(dishes: List<Dish>): List<Map<String, Any?>> =
+        dishes.map { dish ->
+            linkedMapOf(
+                "id" to dish.id,
+                "name" to dish.name,
+                "categoryId" to dish.categoryId,
+                "isFavorite" to dish.isFavorite,
+                "imageUrl" to (dish.imageUrl ?: ""),
+                "vendors" to dish.vendors.map { v ->
+                    linkedMapOf(
+                        "id" to v.id,
+                        "name" to v.name,
+                        "phone" to v.phone,
+                        "address" to v.address,
+                        "price" to v.price,
+                        "link" to (v.link ?: ""),
+                        "extraInfo" to v.extraInfo.map { e ->
+                            linkedMapOf("id" to e.id, "label" to e.label, "value" to e.value)
+                        },
+                    )
+                },
+                "calories" to dish.nutrition.calories,
+                "proteinG" to dish.nutrition.proteinG,
+                "carbsG" to dish.nutrition.carbsG,
+                "fatG" to dish.nutrition.fatG,
+                "nutritionRecordId" to dish.nutrition.nutritionRecordId,
+                "nutritionCanonicalName" to dish.nutrition.nutritionCanonicalName,
+                "nutritionSource" to dish.nutrition.nutritionSource,
+                "nutritionSourceId" to dish.nutrition.nutritionSourceId,
+                "nutritionSourceUrl" to dish.nutrition.nutritionSourceUrl,
+                "nutritionReferenceOnly" to dish.nutrition.nutritionReferenceOnly,
+                "macroEnergyKcal" to dish.nutrition.macroEnergyKcal,
+                "macroEnergyDeltaPct" to dish.nutrition.macroEnergyDeltaPct,
+            )
+        }
+
 
     private fun serializeLog(entry: LogEntry): Map<String, Any?> =
         linkedMapOf(

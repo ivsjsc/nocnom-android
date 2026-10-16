@@ -99,7 +99,8 @@ fun PlanScreen(
                     recommendation.dish.name.contains(query, ignoreCase = true)
             }
             .take(30)
-        val money = remember { NumberFormat.getNumberInstance(Locale("vi", "VN")) }
+        val money = remember { NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN")) }
+
 
         AlertDialog(
             onDismissRequest = {
