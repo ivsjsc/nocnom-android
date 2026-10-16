@@ -39,6 +39,7 @@ interface AuthRepository {
     suspend fun deleteAccount()
     fun signOut()
     fun clearMessage()
+    fun signInAsGuest()
 }
 
 @Singleton
@@ -162,6 +163,21 @@ class FirebaseAuthRepository @Inject constructor(
 
     override fun clearMessage() {
         mutableState.update { it.copy(errorMessage = null, infoMessage = null) }
+    }
+
+    override fun signInAsGuest() {
+        mutableState.update {
+            it.copy(
+                user = AuthUser(
+                    uid = "demo_guest_user",
+                    email = "khach@nocnom.vn",
+                    displayName = "Khách trải nghiệm",
+                    photoUrl = null,
+                ),
+                errorMessage = null,
+                infoMessage = null,
+            )
+        }
     }
 
     private suspend fun execute(block: suspend FirebaseAuth.() -> Unit) {

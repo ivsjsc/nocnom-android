@@ -50,6 +50,7 @@ fun NocnomApp(viewModel: NocnomViewModel = hiltViewModel()) {
                 onGoogleToken = viewModel::signInWithGoogleToken,
                 onResetPassword = viewModel::sendPasswordReset,
                 onClearMessage = viewModel::clearAuthMessage,
+                onGuestSignIn = viewModel::signInAsGuest,
             )
         } else {
             AuthenticatedNocnomApp(

@@ -119,4 +119,6 @@ class NocnomViewModel @Inject constructor(
     fun signOut() = authRepository.signOut()
 
     fun clearAuthMessage() = authRepository.clearMessage()
+
+    fun signInAsGuest() = authRepository.signInAsGuest()
 }

@@ -30,6 +30,7 @@ fun AuthScreen(
     onGoogleToken: (String) -> Unit,
     onResetPassword: (String) -> Unit,
     onClearMessage: () -> Unit,
+    onGuestSignIn: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var createMode by remember { mutableStateOf(false) }
@@ -188,6 +189,13 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Tiếp tục với Google")
+                }
+
+                FilledTonalButton(
+                    onClick = onGuestSignIn,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("🚀 Trải nghiệm ngay (Khách dùng thử)")
                 }
                 if (googleClient == null && state.firebaseAvailable) {
                     Text(
