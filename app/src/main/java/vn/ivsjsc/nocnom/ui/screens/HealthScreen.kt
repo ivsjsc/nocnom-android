@@ -10,17 +10,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import java.text.NumberFormat
-import java.util.Locale
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.*
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import vn.ivsjsc.nocnom.domain.model.Dish
+import vn.ivsjsc.nocnom.domain.model.LogEntry
+import vn.ivsjsc.nocnom.domain.model.MealKey
 import vn.ivsjsc.nocnom.domain.model.UserState
 import vn.ivsjsc.nocnom.domain.time.VietnamTime
 import vn.ivsjsc.nocnom.ui.theme.NocnomPrimary
@@ -30,6 +27,8 @@ fun HealthScreen(
     state: UserState,
     contentPadding: PaddingValues,
     onOpenProfile: () -> Unit,
+    onUpsertMealLog: (String, MealKey, Dish, String, Long) -> Unit = { _, _, _, _, _ -> },
+    onRemoveMealLog: (String) -> Unit = {},
 ) {
     val weight = state.profile.weightKg
     val heightCm = state.profile.heightCm
@@ -69,6 +68,23 @@ fun HealthScreen(
 
     val money = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"))
 
+    val editRange = remember { VietnamTime.editableDateRange() }
+    var calendarDate by remember { mutableStateOf(today) }
+    var selectedDayKey by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    val groupedDays = remember(state.logs) {
+        state.logs
+            .groupBy { VietnamTime.dateKey(it.timestamp) }
+            .map { (dateKey, logs) ->
+                DayLogGroup(
+                    dateKey = dateKey,
+                    logs = logs.sortedBy { it.mealKey?.ordinal ?: 99 },
+                    totalCalories = logs.sumOf { it.nutrition.calories ?: 0.0 }.toInt(),
+                )
+            }
+            .sortedByDescending { it.dateKey }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -546,5 +562,821 @@ fun HealthScreen(
                 }
             }
         }
+
+        // Section: Header Nhật ký ăn uống theo ngày
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = NocnomPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = "Nhật ký ăn uống theo ngày",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        // Card 5: Ghi bù hoặc chỉnh lịch sử
+        item {
+            Card(
+                shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFEFF6FF)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                tint = NocnomPrimary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = "Ghi bù hoặc chỉnh lịch sử",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFFEFF6FF),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                                ) {
+                                    Text(
+                                        text = "TỐI ĐA 3 NGÀY TRƯỚC",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = NocnomPrimary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            val minDateFormatted = VietnamTime.formatDateOnly(editRange.first)
+                            Text(
+                                text = "Chọn từ $minDateFormatted đến hôm nay. Ngày tương lai và ngày cũ hơn chỉ được xem.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 16.sp,
+                            )
+                        }
+                    }
+
+                    // Date selector row & "Mở ngày" button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { showDatePicker = true },
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = VietnamTime.formatDayWithDate(calendarDate),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.EditCalendar,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = { selectedDayKey = calendarDate },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NocnomPrimary),
+                            modifier = Modifier.height(48.dp),
+                        ) {
+                            Text(
+                                text = "Mở ngày",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // List of past log days
+        if (groupedDays.isEmpty()) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFEFF6FF)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.RestaurantMenu,
+                                contentDescription = null,
+                                tint = NocnomPrimary,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                        Text(
+                            text = "Chưa có lịch sử",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 15.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = "Có thể dùng lịch phía trên để ghi bù cho hôm nay hoặc tối đa 3 ngày trước.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 17.sp,
+                        )
+                    }
+                }
+            }
+        } else {
+            items(groupedDays, key = { it.dateKey }) { dayGroup ->
+                Card(
+                    onClick = { selectedDayKey = dayGroup.dateKey },
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFEFF6FF)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                tint = NocnomPrimary,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = VietnamTime.formatDayWithDate(dayGroup.dateKey),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    text = "${dayGroup.logs.size} bữa",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "·",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFFFFF7ED),
+                                ) {
+                                    Text(
+                                        text = "≈ ${money.format(dayGroup.totalCalories)} kcal",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color(0xFFEA580C),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal / Dialog for Day Detail (similar to Web-app popup)
+    selectedDayKey?.let { dKey ->
+        DayDetailDialog(
+            dateKey = dKey,
+            state = state,
+            isEditable = VietnamTime.isDateEditable(dKey),
+            onDismiss = { selectedDayKey = null },
+            onUpsertLog = { mKey, dish, vendorName, price ->
+                onUpsertMealLog(dKey, mKey, dish, vendorName, price)
+            },
+            onRemoveLog = onRemoveMealLog,
+        )
+    }
+
+    // DatePicker Dialog for selecting past 3 days or today
+    if (showDatePicker) {
+        val selectableDates = remember(editRange) {
+            val dates = mutableListOf<String>()
+            var cur = java.time.LocalDate.parse(editRange.first)
+            val end = java.time.LocalDate.parse(editRange.second)
+            while (!cur.isAfter(end)) {
+                dates.add(cur.toString())
+                cur = cur.plusDays(1)
+            }
+            dates.reversed()
+        }
+
+        AlertDialog(
+            onDismissRequest = { showDatePicker = false },
+            title = {
+                Text(
+                    text = "Chọn ngày ghi nhận",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    selectableDates.forEach { d ->
+                        val isSelected = d == calendarDate
+                        Surface(
+                            onClick = {
+                                calendarDate = d
+                                showDatePicker = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) NocnomPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, NocnomPrimary) else null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = VietnamTime.formatDayWithDate(d),
+                                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (isSelected) NocnomPrimary else MaterialTheme.colorScheme.onSurface,
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = NocnomPrimary,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Đóng")
+                }
+            },
+        )
+    }
+}
+
+private data class DayLogGroup(
+    val dateKey: String,
+    val logs: List<LogEntry>,
+    val totalCalories: Int,
+)
+
+@Composable
+private fun DayDetailDialog(
+    dateKey: String,
+    state: UserState,
+    isEditable: Boolean,
+    onDismiss: () -> Unit,
+    onUpsertLog: (MealKey, Dish, String, Long) -> Unit,
+    onRemoveLog: (String) -> Unit,
+) {
+    val money = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"))
+    val dayLogs = state.logs
+        .filter { VietnamTime.dateKey(it.timestamp) == dateKey }
+        .sortedBy { it.mealKey?.ordinal ?: 99 }
+
+    val totalCalories = dayLogs.sumOf { it.nutrition.calories ?: 0.0 }.toInt()
+
+    var isEditMode by remember { mutableStateOf(false) }
+    var editingMealKey by remember { mutableStateOf<MealKey?>(null) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                // Header: LỊCH SỬ TRONG NGÀY + Close button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "LỊCH SỬ TRONG NGÀY",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            color = NocnomPrimary,
+                            letterSpacing = 0.8.sp,
+                        )
+                        Text(
+                            text = VietnamTime.formatDayWithDate(dateKey),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "${dayLogs.size} bữa đã ghi nhận",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isEditable) Color(0xFFEFF6FF) else MaterialTheme.colorScheme.surfaceVariant,
+                            ) {
+                                Text(
+                                    text = if (isEditable) "Có thể chỉnh sửa" else "Chỉ xem",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isEditable) NocnomPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Đóng")
+                    }
+                }
+
+                // Orange Card: TỔNG CALO TIÊU THỤ (giống Web-app ảnh 2)
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFFF97316),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocalFireDepartment,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = "TỔNG CALO TIÊU THỤ",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White.copy(alpha = 0.9f),
+                                letterSpacing = 0.5.sp,
+                            )
+                            Text(
+                                text = "≈ ${money.format(totalCalories)} kcal",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                            )
+                        }
+                    }
+                }
+
+                // Action button: Chỉnh sửa / Xong chỉnh sửa
+                if (isEditable) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        FilledTonalButton(
+                            onClick = { isEditMode = !isEditMode },
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (isEditMode) Icons.Default.Check else Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (isEditMode) "Xong chỉnh sửa" else "Chỉnh sửa")
+                        }
+                    }
+                }
+
+                // List of meals in the day or edit forms
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (isEditMode) {
+                        items(listOf(MealKey.A, MealKey.B, MealKey.C)) { mKey ->
+                            val existing = dayLogs.firstOrNull { it.mealKey == mKey }
+                            val label = when (mKey) {
+                                MealKey.A -> "Bữa sáng"
+                                MealKey.B -> "Bữa trưa"
+                                MealKey.C -> "Bữa tối"
+                            }
+
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = NocnomPrimary,
+                                        )
+                                        if (existing != null) {
+                                            IconButton(
+                                                onClick = { onRemoveLog(existing.id) },
+                                                modifier = Modifier.size(28.dp),
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Xóa",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (existing != null) {
+                                        Text(
+                                            text = existing.dishName,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                        )
+                                        Text(
+                                            text = "Quán: ${existing.vendorName.ifBlank { "Không ghi quán" }} · ${money.format(existing.price)}đ",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Chưa ghi món cho bữa này",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { editingMealKey = mKey },
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(if (existing != null) "Đổi món này" else "Chọn món ghi bữa")
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (dayLogs.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = "Chưa có món ăn nào được ghi trong ngày này.",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        } else {
+                            items(dayLogs, key = { it.id }) { log ->
+                                val mealTitle = when (log.mealKey) {
+                                    MealKey.A -> "BỮA SÁNG"
+                                    MealKey.B -> "BỮA TRƯA"
+                                    MealKey.C -> "BỮA TỐI"
+                                    null -> "BỮA ĂN"
+                                }
+                                val dish = state.dishes.firstOrNull { it.name == log.dishName }
+                                val calo = (log.nutrition.calories ?: 0.0).toInt()
+
+                                Card(
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            if (!dish?.imageUrl.isNullOrBlank()) {
+                                                AsyncImage(
+                                                    model = dish?.imageUrl,
+                                                    contentDescription = log.dishName,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(52.dp)
+                                                        .clip(RoundedCornerShape(14.dp)),
+                                                )
+                                            } else {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(52.dp)
+                                                        .clip(RoundedCornerShape(14.dp))
+                                                        .background(Color(0xFFEFF6FF)),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Restaurant,
+                                                        contentDescription = null,
+                                                        tint = NocnomPrimary,
+                                                        modifier = Modifier.size(24.dp),
+                                                    )
+                                                }
+                                            }
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = mealTitle,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = NocnomPrimary,
+                                                    letterSpacing = 0.5.sp,
+                                                )
+                                                Text(
+                                                    text = log.dishName,
+                                                    fontWeight = FontWeight.Black,
+                                                    fontSize = 15.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                                Text(
+                                                    text = "≈ $calo kcal · ${money.format(log.price)}đ",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
+                                        }
+
+                                        // Quán:
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = MaterialTheme.colorScheme.surface,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(
+                                                text = "Quán: ${log.vendorName.ifBlank { "Không ghi quán" }}",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Dish picker for a specific meal
+    editingMealKey?.let { mKey ->
+        var query by remember { mutableStateOf("") }
+        val filteredDishes = state.dishes.filter {
+            query.isBlank() || it.name.contains(query, ignoreCase = true)
+        }
+
+        AlertDialog(
+            onDismissRequest = { editingMealKey = null },
+            title = {
+                Text(
+                    text = "Chọn món cho " + when (mKey) {
+                        MealKey.A -> "Bữa sáng"
+                        MealKey.B -> "Bữa trưa"
+                        MealKey.C -> "Bữa tối"
+                    },
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Tìm món ăn...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(filteredDishes, key = { it.id }) { dish ->
+                            val defaultVendor = dish.vendors.firstOrNull()
+                            val price = defaultVendor?.price ?: 0
+                            Surface(
+                                onClick = {
+                                    onUpsertLog(
+                                        mKey,
+                                        dish,
+                                        defaultVendor?.name ?: "Không ghi quán",
+                                        price,
+                                    )
+                                    editingMealKey = null
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = dish.name,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                        )
+                                        val kcal = dish.nutrition.calories?.toInt()?.let { "$it kcal" } ?: "0 kcal"
+                                        Text(
+                                            text = "$kcal · ${money.format(price)}đ",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { editingMealKey = null }) {
+                    Text("Đóng")
+                }
+            },
+        )
     }
 }

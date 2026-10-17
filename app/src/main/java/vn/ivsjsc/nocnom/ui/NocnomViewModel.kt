@@ -71,6 +71,18 @@ class NocnomViewModel @Inject constructor(
         viewModelScope.launch { runCatching { repository.unmarkMealEaten(mealKey) } }
     }
 
+    fun upsertMealLog(dateKey: String, mealKey: MealKey, dish: vn.ivsjsc.nocnom.domain.model.Dish, vendorName: String, price: Long) {
+        viewModelScope.launch {
+            runCatching { repository.upsertMealLog(dateKey, mealKey, dish, vendorName, price) }
+        }
+    }
+
+    fun removeMealLog(logId: String) {
+        viewModelScope.launch {
+            runCatching { repository.removeMealLog(logId) }
+        }
+    }
+
     fun addDish(dish: vn.ivsjsc.nocnom.domain.model.Dish) {
         viewModelScope.launch { runCatching { repository.addDish(dish) } }
     }

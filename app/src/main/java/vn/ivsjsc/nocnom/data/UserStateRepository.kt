@@ -20,5 +20,7 @@ interface UserStateRepository {
     suspend fun addDish(dish: Dish)
     suspend fun updateDish(dish: Dish)
     suspend fun toggleFavoriteDish(dishId: String)
+    suspend fun upsertMealLog(dateKey: String, mealKey: MealKey, dish: Dish, vendorName: String, price: Long)
+    suspend fun removeMealLog(logId: String)
 }
 

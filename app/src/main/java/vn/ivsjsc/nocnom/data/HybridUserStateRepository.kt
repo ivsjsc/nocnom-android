@@ -160,6 +160,50 @@ class HybridUserStateRepository @Inject constructor(
         persistLogsDirectly(uid, retained)
     }
 
+    override suspend fun upsertMealLog(
+        dateKey: String,
+        mealKey: MealKey,
+        dish: Dish,
+        vendorName: String,
+        price: Long,
+    ) {
+        require(VietnamTime.isDateEditable(dateKey)) {
+            "Chỉ được thêm hoặc chỉnh sửa lịch sử của hôm nay và tối đa 3 ngày trước."
+        }
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val timestamp = VietnamTime.timestampForDateAndMeal(dateKey, mealKey)
+        val id = "android-$dateKey-${mealKey.name}"
+        val entry = LogEntry(
+            id = id,
+            dishName = dish.name,
+            vendorName = vendorName,
+            price = price,
+            mealKey = mealKey,
+            timestamp = timestamp,
+            nutrition = dish.nutrition,
+        )
+        val retained = current.logs.filterNot { log ->
+            log.id == id ||
+                (log.mealKey == mealKey && VietnamTime.dateKey(log.timestamp) == dateKey)
+        }
+        mutableState.value = current.copy(logs = retained + entry)
+        persistLogWithoutLosingUnknownFields(uid, entry, dateKey, mealKey)
+    }
+
+    override suspend fun removeMealLog(logId: String) {
+        val uid = currentUid() ?: return
+        val current = mutableState.value
+        val existing = current.logs.find { it.id == logId } ?: return
+        val dateKey = VietnamTime.dateKey(existing.timestamp)
+        require(VietnamTime.isDateEditable(dateKey)) {
+            "Lịch sử quá 3 ngày chỉ được xem, không thể xóa hoặc chỉnh sửa."
+        }
+        val retained = current.logs.filterNot { it.id == logId }
+        mutableState.value = current.copy(logs = retained)
+        persistLogsDirectly(uid, retained)
+    }
+
     override suspend fun addDish(dish: Dish) {
         val uid = currentUid() ?: return
         val current = mutableState.value

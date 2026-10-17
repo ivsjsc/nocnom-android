@@ -161,6 +161,8 @@ private fun AuthenticatedNocnomApp(
                     state = state,
                     contentPadding = padding,
                     onOpenProfile = { navController.navigate("profile") },
+                    onUpsertMealLog = viewModel::upsertMealLog,
+                    onRemoveMealLog = viewModel::removeMealLog,
                 )
             }
 
