@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import vn.ivsjsc.nocnom.R
 import vn.ivsjsc.nocnom.domain.model.UserProfile
 import vn.ivsjsc.nocnom.ui.theme.NocnomPrimary
@@ -75,14 +77,15 @@ fun NocnomHeader(
                         .size(44.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFFFCF7EC))
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_nocnom_launcher),
+                        painter = painterResource(id = R.drawable.nocnom_brand_logo),
                         contentDescription = "nOcnOm Logo",
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier
-                            .size(38.dp)
+                            .fillMaxSize()
                             .padding(2.dp),
                     )
                 }
@@ -143,7 +146,7 @@ fun NocnomHeader(
                     )
                 }
 
-                // User Avatar Button
+                // User Profile Button
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -157,20 +160,47 @@ fun NocnomHeader(
                         .clickable { showAccountMenu = true },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (profile.photoUrl.isNotBlank()) {
-                        AsyncImage(
+                    if (profile.photoUrl.isNotBlank() && (profile.photoUrl.startsWith("http://") || profile.photoUrl.startsWith("https://"))) {
+                        SubcomposeAsyncImage(
                             model = profile.photoUrl,
                             contentDescription = profile.fullName,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(14.dp)),
                             contentScale = ContentScale.Crop,
+                            loading = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Hồ sơ cá nhân",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            },
+                            error = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Hồ sơ cá nhân",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                }
+                            },
                         )
                     } else {
-                        val initials = getInitials(profile.fullName.ifBlank { accountEmail ?: "NG" })
-                        Text(
-                            text = initials,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Hồ sơ cá nhân",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
                         )
                     }
                 }
@@ -261,19 +291,45 @@ fun AccountMenuDialog(
                                 .background(NocnomPrimary),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (profile.photoUrl.isNotBlank()) {
-                                AsyncImage(
+                            if (profile.photoUrl.isNotBlank() && (profile.photoUrl.startsWith("http://") || profile.photoUrl.startsWith("https://"))) {
+                                SubcomposeAsyncImage(
                                     model = profile.photoUrl,
                                     contentDescription = profile.fullName,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
+                                    loading = {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = "Hồ sơ cá nhân",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp),
+                                            )
+                                        }
+                                    },
+                                    error = {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Person,
+                                                contentDescription = "Hồ sơ cá nhân",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp),
+                                            )
+                                        }
+                                    },
                                 )
                             } else {
-                                Text(
-                                    text = getInitials(profile.fullName.ifBlank { accountEmail ?: "NG" }),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 16.sp,
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Hồ sơ cá nhân",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp),
                                 )
                             }
                         }
